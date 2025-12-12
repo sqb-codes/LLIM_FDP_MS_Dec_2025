@@ -44,9 +44,9 @@ GRANT ALL PRIVILEGES ON university_db.* TO r_admin;
 
 Assign Roles to Users
 
-GRANT r_student TO student;
-GRANT r_faculty TO faculty;
-GRANT r_admin TO admin;
+GRANT r_student TO 'student'@'localhost';
+GRANT r_faculty TO 'faculty'@'localhost';
+GRANT r_admin TO 'admin'@'localhost';
 
 Activate Role
 
