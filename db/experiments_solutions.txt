@@ -54,9 +54,9 @@ SET DEFAULT ROLE ALL TO student, faculty, admin;
 
 Verify Privileges
 
-SHOW GRANTS FOR student;
-SHOW GRANTS FOR faculty;
-SHOW GRANTS FOR admin;
+SHOW GRANTS FOR 'student'@'localhost';
+SHOW GRANTS FOR 'faculty'@'localhost';
+SHOW GRANTS FOR 'admin'@'localhost';
 
 
 EXPERIMENT 3: Attribute-Based Access Control (ABAC) + Password Policies
