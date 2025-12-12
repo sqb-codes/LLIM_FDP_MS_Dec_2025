@@ -1,0 +1,273 @@
+Login to MySQL
+
+sudo mysql -u root -p
+
+Create Database
+
+CREATE DATABASE university_db;
+USE university_db;
+
+Create a Basic User
+
+CREATE USER 'appuser'@'localhost' IDENTIFIED BY 'AppUser@123';
+
+Grant Basic Privileges
+
+GRANT SELECT, INSERT ON university_db.* TO 'appuser'@'localhost';
+FLUSH PRIVILEGES;
+
+Test Authentication
+
+mysql -u appuser -p
+Should allow login with limited access.
+
+EXPERIMENT 2: User Privileges and Role-Based Access Control (RBAC)
+Create Users
+
+CREATE USER 'student'@'localhost' IDENTIFIED BY 'Student@123';
+CREATE USER 'faculty'@'localhost' IDENTIFIED BY 'Faculty@123';
+CREATE USER 'admin'@'localhost' IDENTIFIED BY 'Admin@123';
+
+Create Roles
+
+CREATE ROLE 'r_student';
+CREATE ROLE 'r_faculty';
+CREATE ROLE 'r_admin';
+
+Grant Privileges to Roles
+
+GRANT SELECT ON university_db.* TO r_student;
+
+GRANT SELECT, INSERT, UPDATE ON university_db.* TO r_faculty;
+
+GRANT ALL PRIVILEGES ON university_db.* TO r_admin;
+
+Assign Roles to Users
+
+GRANT r_student TO student;
+GRANT r_faculty TO faculty;
+GRANT r_admin TO admin;
+
+Activate Role
+
+SET DEFAULT ROLE ALL TO student, faculty, admin;
+
+Verify Privileges
+
+SHOW GRANTS FOR student;
+SHOW GRANTS FOR faculty;
+SHOW GRANTS FOR admin;
+
+
+EXPERIMENT 3: Attribute-Based Access Control (ABAC) + Password Policies
+Create Test Table
+
+CREATE TABLE students(
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50),
+    department VARCHAR(50),
+    grade VARCHAR(10)
+);
+
+Insert Sample Data
+
+INSERT INTO students (name, department, grade) VALUES
+('Rohan', 'CSE', 'A'),
+('Meera', 'IT', 'B'),
+('Aman', 'CSE', 'A'),
+('Priya', 'ECE', 'C');
+
+ABAC Using Views
+Faculty can see only their department
+Example: CSE faculty.
+
+CREATE VIEW cse_view AS 
+SELECT * FROM students WHERE department = 'CSE';
+
+Grant faculty access
+
+GRANT SELECT ON cse_view TO faculty;
+
+Password Policies
+Minimum Length, Complexity
+
+SET GLOBAL validate_password.policy = 2;
+SET GLOBAL validate_password.length = 10;
+
+Verify Policy
+
+SHOW VARIABLES LIKE 'validate_password%';
+
+EXPERIMENT 4: Encryption (AES) + SSL/TLS Secure Communication
+Column-Level Encryption
+Encrypt Data
+
+UPDATE students
+SET grade = AES_ENCRYPT(grade, 'secretkey123')
+WHERE id = 1;
+
+Decrypt Data
+
+SELECT name, AES_DECRYPT(grade, 'secretkey123')
+FROM students;
+
+SSL/TLS Setup (MySQL)
+
+Check if SSL is Enabled
+
+SHOW VARIABLES LIKE '%ssl%';
+
+Enable SSL in my.cnf
+Add:
+
+[mysqld]
+ssl-ca=/etc/mysql/ssl/ca.pem
+ssl-cert=/etc/mysql/ssl/server-cert.pem
+ssl-key=/etc/mysql/ssl/server-key.pem
+Restart:
+
+sudo systemctl restart mysql
+
+Verify secure connection
+
+SHOW SESSION STATUS LIKE 'Ssl_cipher';
+If empty → not using SSLIf value → SSL active
+
+EXPERIMENT 5: SQL Injection Attack + Prevention
+Using a test table:
+
+CREATE TABLE login(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50),
+    password VARCHAR(50)
+);
+
+Insert Sample User
+
+INSERT INTO login(username, password)
+VALUES ('admin', 'admin123');
+
+SQL Injection Attack
+Vulnerable query:
+
+SELECT * FROM login WHERE username='admin' AND password='anything' OR '1'='1';
+Results in login bypass.
+
+Prevention Using Prepared Statements (Example: MySQL CLI)
+
+PREPARE stmt FROM 'SELECT * FROM login WHERE username=? AND password=?';
+SET @u = 'admin';
+SET @p = 'admin123';
+EXECUTE stmt USING @u, @p;
+Prepared statements treat input as data, not executable SQL.
+
+
+EXPERIMENT 6: XSS Attack + Mitigation
+Create Comment Table
+
+CREATE TABLE comments(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    comment TEXT
+);
+
+Insert XSS Payload
+
+INSERT INTO comments(comment)
+VALUES ('<script>alert("Hacked!")</script>');
+
+Web App Displays Stored XSS
+
+Mitigation: Input Sanitization
+MySQL REPLACE() to escape < and >
+
+UPDATE comments
+SET comment = REPLACE(REPLACE(comment, '<', '&lt;'), '>', '&gt;');
+Stored XSS is now neutralized.
+
+EXPERIMENT 7: Vulnerability Scanning Using OpenVAS
+Install OpenVAS
+
+sudo apt install openvas
+
+Setup
+
+sudo gvm-setup
+sudo gvm-check-setup
+
+Start Services
+
+sudo gvm-start
+
+Login to Dashboard
+Navigate to:
+
+https://localhost:9392
+
+Scan Database Server
+* Add target: MySQL Server IP
+* Select “Full and Fast Scan”
+* Start scan
+
+Export PDF report from dashboard.
+
+EXPERIMENT 8: SQLMap Testing
+Install SQLMap
+
+sudo apt install sqlmap
+
+Test Vulnerable URL
+
+sqlmap -u "http://localhost/login.php?username=admin&password=123" --batch
+
+Dump Database
+
+sqlmap -u "http://localhost/login.php?username=admin&password=123" --dump
+
+Get DB Users
+
+sqlmap -u URL --users
+
+EXPERIMENT 9: Network Traffic Analysis using Wireshark
+
+Capture TCP Packets for MySQL
+Filter:
+
+tcp.port == 3306
+
+Observe Plain-Text Passwords (unencrypted session)
+Shows SQL queries in readable text.
+
+Switch to SSL/TLS
+Now queries appear as encrypted binary.
+This visually proves why encryption is mandatory.
+
+
+EXPERIMENT 10: Database Security Audit + Reporting
+Audit Queries
+
+Check Users
+
+SELECT user, host FROM mysql.user;
+
+Check Weak Passwords (empty or simple)
+
+SELECT user, host, authentication_string 
+FROM mysql.user 
+WHERE authentication_string = '' OR authentication_string IS NULL;
+
+Check for Users with ALL PRIVILEGES
+
+SHOW GRANTS FOR 'admin'@'localhost';
+
+Check SSL Status
+
+SHOW VARIABLES LIKE '%ssl%';
+
+Check Insecure Configurations
+
+SHOW VARIABLES LIKE 'local_infile';
+If ON → vulnerable to file upload attacks.
+
+Check Database version
+
+SELECT VERSION();
